@@ -1,53 +1,56 @@
-import { useState, useEffect } from 'react';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'manager' | 'staff';
-}
+import { useState, useEffect } from "react";
+import { supabase } from "../lib/supabaseClient";
+import { Session, User } from "@supabase/supabase-js";
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate auth check
-    const checkAuth = () => {
-      const savedUser = localStorage.getItem('user');
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
-      }
+    const getSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      setSession(session);
+      setUser(session?.user ?? null);
       setIsLoading(false);
     };
 
-    checkAuth();
+    getSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+      }
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
-    // Simulate login
-    const mockUser: User = {
-      id: '1',
-      name: 'Admin User',
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
-      role: 'admin'
-    };
-    
-    localStorage.setItem('user', JSON.stringify(mockUser));
-    setUser(mockUser);
-    return mockUser;
+      password,
+    });
+    if (error) throw error;
+    return data;
   };
 
-  const logout = () => {
-    localStorage.removeItem('user');
-    setUser(null);
+  const logout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
   };
 
   return {
     user,
+    session,
     isLoading,
     login,
     logout,
-    isAuthenticated: !!user
+    isAuthenticated: !!session,
   };
 };

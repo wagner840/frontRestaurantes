@@ -9,16 +9,19 @@ export const Login = (): JSX.Element => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+    setError(null);
+
     try {
       await login(email, password);
-    } catch (error) {
-      console.error('Login failed:', error);
+    } catch (error: any) {
+      setError(error.message || "Ocorreu um erro ao tentar fazer login.");
+      console.error("Login failed:", error);
     } finally {
       setIsLoading(false);
     }
@@ -32,11 +35,21 @@ export const Login = (): JSX.Element => {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-orange-500 rounded-full mb-4">
               <UtensilsCrossed className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">RestaurantePro</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              RestaurantePro
+            </h1>
             <p className="text-gray-600">Faça login para continuar</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div
+                className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+                role="alert"
+              >
+                <span className="block sm:inline">{error}</span>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Email
@@ -65,16 +78,16 @@ export const Login = (): JSX.Element => {
               />
             </div>
 
-            <Button 
+            <Button
               type="submit"
               disabled={isLoading}
               className="w-full h-12 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition-colors disabled:opacity-50"
             >
-              {isLoading ? 'Entrando...' : 'Entrar'}
+              {isLoading ? "Entrando..." : "Entrar"}
             </Button>
 
             <div className="text-center">
-              <button 
+              <button
                 type="button"
                 className="text-sm text-orange-600 hover:text-orange-700 hover:underline"
               >
