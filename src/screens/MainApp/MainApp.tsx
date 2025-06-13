@@ -1,14 +1,16 @@
 import React, { useState } from "react";
 import { BarChart3, Settings } from "lucide-react";
 import { Sidebar } from "../../components/layout/Sidebar";
+import { Header } from "../../components/layout/Header"; // Importa o Header
 import { Dashboard } from "../Dashboard/Dashboard";
 import { Menu } from "../Menu/Menu";
 import { Orders } from "../Orders/Orders";
-import { Customers } from "../Customers/Customers"; // Importa o novo componente
+import { Customers } from "../Customers/Customers";
 import { useAuth } from "../../hooks/useAuth";
 
 export const MainApp: React.FC = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [isSidebarOpen, setSidebarOpen] = useState(false); // Estado para a sidebar
   const { logout } = useAuth();
 
   const renderContent = () => {
@@ -20,10 +22,10 @@ export const MainApp: React.FC = () => {
       case "orders":
         return <Orders />;
       case "customers":
-        return <Customers />; // Renderiza o componente de Clientes
+        return <Customers />;
       case "analytics":
         return (
-          <div className="p-8">
+          <div className="p-4 md:p-8">
             <div className="max-w-4xl">
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 Relatórios
@@ -47,7 +49,7 @@ export const MainApp: React.FC = () => {
         );
       case "settings":
         return (
-          <div className="p-8">
+          <div className="p-4 md:p-8">
             <div className="max-w-4xl">
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 Configurações
@@ -80,8 +82,13 @@ export const MainApp: React.FC = () => {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onLogout={logout}
+        isOpen={isSidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
-      <main className="flex-1 overflow-auto">{renderContent()}</main>
+      <div className="flex-1 flex flex-col">
+        <Header onMenuClick={() => setSidebarOpen(true)} />
+        <main className="flex-1 overflow-auto">{renderContent()}</main>
+      </div>
     </div>
   );
 };

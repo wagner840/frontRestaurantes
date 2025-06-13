@@ -76,7 +76,7 @@ export const Dashboard: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="p-8 space-y-8">
+      <div className="p-4 md:p-8 space-y-8">
         <div className="text-center text-gray-500">
           Carregando dados do dashboard...
         </div>
@@ -86,7 +86,7 @@ export const Dashboard: React.FC = () => {
 
   if (error) {
     return (
-      <div className="p-8 space-y-8">
+      <div className="p-4 md:p-8 space-y-8">
         <div className="text-center text-red-500">
           <p className="font-bold">Ocorreu um erro:</p>
           <p>{error}</p>
@@ -96,16 +96,18 @@ export const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="p-8 space-y-8">
-      <div className="max-w-7xl">
+    <div className="p-4 md:p-8 space-y-8">
+      <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+            Dashboard
+          </h1>
           <p className="text-gray-600">
             Bem-vindo de volta! Aqui está o resumo do seu restaurante hoje.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatsCard
             title="Pedidos Hoje"
             value={stats?.totalOrders ?? 0}
