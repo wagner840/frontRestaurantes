@@ -1,28 +1,59 @@
-import React, { useState } from "react";
-import { BarChart3, Settings } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import {
+  BarChart3,
+  Settings,
+  LayoutDashboard,
+  UtensilsCrossed,
+  ShoppingBag,
+  Users,
+  Cake,
+} from "lucide-react";
 import { Sidebar } from "../../components/layout/Sidebar";
-import { Header } from "../../components/layout/Header"; // Importa o Header
+import { Header } from "../../components/layout/Header";
 import { Dashboard } from "../Dashboard/Dashboard";
 import { Menu } from "../Menu/Menu";
 import { Orders } from "../Orders/Orders";
 import { Customers } from "../Customers/Customers";
+import { BirthdaysScreen } from "../Birthdays/Birthdays";
 import { useAuth } from "../../hooks/useAuth";
+
+const menuItems = [
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "menu", label: "Cardápio", icon: UtensilsCrossed },
+  { id: "orders", label: "Pedidos", icon: ShoppingBag },
+  { id: "customers", label: "Clientes", icon: Users },
+  { id: "birthdays", label: "Aniversários", icon: Cake },
+  { id: "analytics", label: "Relatórios", icon: BarChart3 },
+  { id: "settings", label: "Configurações", icon: Settings },
+];
 
 export const MainApp: React.FC = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [isSidebarOpen, setSidebarOpen] = useState(false); // Estado para a sidebar
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
   const { logout } = useAuth();
+  useEffect(() => {
+    if (isSidebarOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+    }
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [isSidebarOpen]);
 
   const renderContent = () => {
     switch (activeTab) {
       case "dashboard":
-        return <Dashboard />;
+        return <Dashboard onTabChange={setActiveTab} />;
       case "menu":
         return <Menu />;
       case "orders":
         return <Orders />;
       case "customers":
         return <Customers />;
+      case "birthdays":
+        return <BirthdaysScreen />;
       case "analytics":
         return (
           <div className="p-4 md:p-8">
@@ -72,7 +103,7 @@ export const MainApp: React.FC = () => {
           </div>
         );
       default:
-        return <Dashboard />;
+        return <Dashboard onTabChange={setActiveTab} />;
     }
   };
 
@@ -84,9 +115,14 @@ export const MainApp: React.FC = () => {
         onLogout={logout}
         isOpen={isSidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        menuItems={menuItems}
       />
       <div className="flex-1 flex flex-col">
-        <Header onMenuClick={() => setSidebarOpen(true)} />
+        <Header
+          onMenuClick={() => setSidebarOpen(true)}
+          activeTab={activeTab}
+          menuItems={menuItems}
+        />
         <main className="flex-1 overflow-auto">{renderContent()}</main>
       </div>
     </div>

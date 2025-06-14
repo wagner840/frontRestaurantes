@@ -74,56 +74,64 @@ export const Orders: React.FC = () => {
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2 border-b pb-4">
-        <h3 className="text-sm font-semibold text-gray-500 w-full mb-2">
-          Tipo de Pedido
-        </h3>
-        {[
-          { key: "all", label: "Todos" },
-          { key: "delivery", label: "Delivery" },
-          { key: "pickup", label: "Retirada" },
-        ].map((type) => (
-          <button
-            key={type.key}
-            onClick={() => setOrderTypeFilter(type.key as any)}
-            className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${
-              orderTypeFilter === type.key
-                ? "bg-orange-500 text-white"
-                : "bg-gray-100 text-gray-800 hover:opacity-80"
-            }`}
-          >
-            {type.label}
-          </button>
-        ))}
+      <div className="flex flex-col md:flex-row gap-6">
+        {/* Filtro de Tipo de Pedido */}
+        <div className="flex flex-col gap-2">
+          <h3 className="text-sm font-semibold text-gray-500">
+            Tipo de Pedido
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: "all", label: "Todos" },
+              { key: "delivery", label: "Delivery" },
+              { key: "pickup", label: "Retirada" },
+            ].map((type) => (
+              <button
+                key={type.key}
+                onClick={() => setOrderTypeFilter(type.key as any)}
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                  orderTypeFilter === type.key
+                    ? "bg-orange-500 text-white"
+                    : "bg-gray-100 text-gray-800 hover:opacity-80"
+                }`}
+              >
+                {type.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        <h3 className="text-sm font-semibold text-gray-500 w-full mb-2">
+      {/* Filtro de Status do Pedido */}
+      <div className="flex flex-col gap-2">
+        <h3 className="text-sm font-semibold text-gray-500">
           Status do Pedido
         </h3>
-        {[
-          { key: "all", label: "Todos" },
-          { key: "pending", label: "Pendentes" },
-          { key: "confirmed", label: "Confirmados" },
-          { key: "preparing", label: "Preparando" },
-          { key: "out_for_delivery", label: "Em Entrega" },
-          { key: "delivered", label: "Entregues" },
-          { key: "completed", label: "Concluídos" },
-          { key: "cancelled", label: "Cancelados" },
-        ].map((status) => (
-          <button
-            key={status.key}
-            onClick={() => setStatusFilter(status.key as any)}
-            className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${
-              statusFilter === status.key
-                ? "bg-[#0c7ff2] text-white"
-                : "bg-gray-100 text-gray-800 hover:opacity-80"
-            }`}
-          >
-            {status.label} (
-            {statusCounts[status.key as keyof typeof statusCounts] || 0})
-          </button>
-        ))}
+        <div className="flex flex-wrap gap-2">
+          {[
+            { key: "all", label: "Todos" },
+            { key: "pending", label: "Pendentes" },
+            { key: "confirmed", label: "Confirmados" },
+            { key: "preparing", label: "Preparando" },
+            { key: "out_for_delivery", label: "Em Entrega" },
+            { key: "delivered", label: "Entregues" },
+            { key: "completed", label: "Concluídos" },
+            { key: "cancelled", label: "Cancelados" },
+          ].map((status) => (
+            <button
+              key={status.key}
+              onClick={() => setStatusFilter(status.key as any)}
+              className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                statusFilter === status.key
+                  ? "bg-[#0c7ff2] text-white"
+                  : "bg-gray-100 text-gray-800 hover:opacity-80"
+              }`}
+            >
+              {status.label} (
+              {statusCounts[status.key as keyof typeof statusCounts] || 0})
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (
@@ -140,7 +148,7 @@ export const Orders: React.FC = () => {
           <p className="text-[#607589] text-lg">Nenhum pedido encontrado.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6">
           {filteredOrders.map((order) => (
             <OrderCard
               key={order.order_id}

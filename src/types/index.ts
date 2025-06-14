@@ -62,13 +62,26 @@ export interface DashboardStats {
   completedOrders: number;
 }
 
+export type BirthdayStatus =
+  | "eligible"
+  | "30d_sent"
+  | "15d_sent"
+  | "booked"
+  | "declined"
+  | "completed";
+
 export interface Customer {
   customer_id: string;
   name: string;
   whatsapp: string;
   email: string;
   birthday: string | null;
+  unique_code: string;
+  birthday_status: BirthdayStatus | null;
   created_at: string;
+  last_contacted_at: string | null;
+  Is_Gift_Used: string | null; // Mantido conforme schema, mas usaremos birthday_status
+  whatsapp_chat_id: number | null;
 }
 
 export interface CustomerDetails {

@@ -100,8 +100,8 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   }
 
   return (
-    <div className="bg-white rounded-lg border border-[#e5e8ea] p-6 flex flex-col h-full">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-white rounded-lg border border-[#e5e8ea] p-4 sm:p-6 flex flex-col h-full">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <Hash size={16} className="text-[#607589]" />
@@ -110,12 +110,12 @@ export const OrderCard: React.FC<OrderCardProps> = ({
             </span>
           </div>
           <span
-            className={`px-3 py-1 rounded-full text-sm font-medium border ${statusInfo.color}`}
+            className={`px-3 py-1 rounded-full text-xs sm:text-sm font-medium border ${statusInfo.color}`}
           >
             {statusInfo.text}
           </span>
         </div>
-        <div className="text-right">
+        <div className="w-full sm:w-auto text-left sm:text-right">
           <p className="text-xl font-bold text-[#111416]">
             R$ {(order.total_amount || 0).toFixed(2)}
           </p>
@@ -128,7 +128,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-4 mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-4">
         <div className="flex items-center gap-2 text-sm text-gray-500">
           {order.order_type === "delivery" ? (
             <Truck size={16} />
@@ -151,9 +151,9 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         {items.map((item, index) => (
           <div
             key={index}
-            className="flex justify-between items-center py-2 border-b border-[#e5e8ea] last:border-b-0"
+            className="flex justify-between items-start py-2 border-b border-[#e5e8ea] last:border-b-0 gap-2"
           >
-            <div>
+            <div className="flex-grow">
               <span className="font-medium text-[#111416]">
                 {item.quantity}x {item.name}
               </span>
@@ -161,7 +161,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                 <p className="text-sm text-[#607589] mt-1">Obs: {item.notes}</p>
               )}
             </div>
-            <span className="text-[#607589]">
+            <span className="text-right text-[#607589] flex-shrink-0">
               R$ {(item.price * item.quantity).toFixed(2)}
             </span>
           </div>

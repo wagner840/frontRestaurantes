@@ -23,7 +23,9 @@ interface SalesByCategory {
   amount: number;
 }
 
-export const Dashboard: React.FC = () => {
+export const Dashboard: React.FC<{ onTabChange: (tab: string) => void }> = ({
+  onTabChange,
+}) => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [salesByCategory, setSalesByCategory] = useState<SalesByCategory[]>([]);
@@ -76,7 +78,7 @@ export const Dashboard: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="p-4 md:p-8 space-y-8">
+      <div className="p-4 md:p-6">
         <div className="text-center text-gray-500">
           Carregando dados do dashboard...
         </div>
@@ -86,8 +88,8 @@ export const Dashboard: React.FC = () => {
 
   if (error) {
     return (
-      <div className="p-4 md:p-8 space-y-8">
-        <div className="text-center text-red-500">
+      <div className="p-4 md:p-6">
+        <div className="text-center text-red-500 bg-red-50 p-4 rounded-lg">
           <p className="font-bold">Ocorreu um erro:</p>
           <p>{error}</p>
         </div>
@@ -96,18 +98,16 @@ export const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="p-4 md:p-8 space-y-8">
+    <div className="p-4 md:p-6 space-y-6">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-            Dashboard
-          </h1>
-          <p className="text-gray-600">
+        <div className="mb-6">
+          <p className="text-gray-600 text-sm md:text-base">
             Bem-vindo de volta! Aqui está o resumo do seu restaurante hoje.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Stats Cards - Mobile First */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
           <StatsCard
             title="Pedidos Hoje"
             value={stats?.totalOrders ?? 0}
@@ -137,25 +137,31 @@ export const Dashboard: React.FC = () => {
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Main Content Area - Mobile First */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Recent Orders on the left for larger screens */}
           <div className="lg:col-span-2">
-            <RecentOrders orders={orders.slice(0, 5)} />
+            <RecentOrders
+              orders={orders.slice(0, 5)}
+              onViewAllClick={() => onTabChange("orders")}
+            />
           </div>
 
+          {/* Quick Stats and Sales by Category on the right */}
           <div className="space-y-6">
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-6">
+            <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+              <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4">
                 Vendas por Categoria
               </h3>
               <div className="space-y-4">
                 {salesByCategory.length > 0 ? (
                   salesByCategory.map((item, index) => (
                     <div key={item.category} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium text-gray-700">
                           {item.category}
                         </span>
-                        <span className="text-sm font-semibold text-gray-900">
+                        <span className="font-semibold text-gray-900">
                           R$ {item.amount.toFixed(2)}
                         </span>
                       </div>
@@ -181,14 +187,14 @@ export const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+              <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4">
                 Estatísticas Rápidas
               </h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
                       <TrendingUp className="w-5 h-5 text-blue-600" />
                     </div>
                     <div>
@@ -199,7 +205,7 @@ export const Dashboard: React.FC = () => {
                     </div>
                   </div>
                   <span
-                    className={`text-lg font-bold ${
+                    className={`text-base md:text-lg font-bold ${
                       revenueGrowth >= 0 ? "text-green-600" : "text-red-600"
                     }`}
                   >
@@ -210,7 +216,7 @@ export const Dashboard: React.FC = () => {
 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
                       <Users className="w-5 h-5 text-green-600" />
                     </div>
                     <div>
@@ -220,7 +226,7 @@ export const Dashboard: React.FC = () => {
                       <p className="text-xs text-gray-500">últimos 30 dias</p>
                     </div>
                   </div>
-                  <span className="text-lg font-bold text-gray-900">
+                  <span className="text-base md:text-lg font-bold text-gray-900">
                     {activeCustomers}
                   </span>
                 </div>

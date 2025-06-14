@@ -1,5 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
-import { Order, OrderItemJson } from "../types";
+import { Order, OrderItemJson, Customer, BirthdayStatus } from "../types";
 
 const normalizeString = (str: string) => {
   if (typeof str !== "string") return "";
@@ -278,4 +278,106 @@ export const getCustomerDetails = async (customerId: string) => {
     totalSpent,
     favoriteDays,
   };
+};
+
+export const getBirthdayCustomers = async (days = 30): Promise<Customer[]> => {
+  const today = new Date();
+  const futureDate = new Date();
+  futureDate.setDate(today.getDate() + days);
+
+  // Esta é uma simplificação. O ideal seria uma query mais complexa
+  // ou uma função no banco de dados (RPC) para lidar com aniversários
+  // que "viram o ano" (ex: hoje é 20/12, buscar aniversários até 19/01).
+  const { data, error } = await supabase
+    .from("customers")
+    .select("*")
+    .not("birthday", "is", null)
+    .in("birthday_status", ["eligible", "30d_sent", "15d_sent", "booked"]);
+
+  if (error) {
+    console.error("Error fetching birthday customers:", error);
+    throw error;
+  }
+  if (!data) return [];
+
+  // Filtro no lado do cliente para aniversários futuros
+  const upcomingBirthdays = data.filter((customer) => {
+    if (!customer.birthday) return false;
+    const birthday = new Date(customer.birthday);
+    const birthdayThisYear = new Date(
+      today.getFullYear(),
+      birthday.getMonth(),
+      birthday.getDate()
+    );
+
+    if (birthdayThisYear < today) {
+      birthdayThisYear.setFullYear(today.getFullYear() + 1);
+    }
+
+    return birthdayThisYear >= today && birthdayThisYear <= futureDate;
+  });
+
+  return upcomingBirthdays.sort((a, b) => {
+    const dateA = new Date(a.birthday!);
+    const dateB = new Date(b.birthday!);
+    const monthA = dateA.getMonth();
+    const monthB = dateB.getMonth();
+    if (monthA !== monthB) return monthA - monthB;
+    return dateA.getDate() - dateB.getDate();
+  });
+};
+
+export const updateBirthdayStatus = async (
+  customerId: string,
+  status: BirthdayStatus
+): Promise<Customer> => {
+  const { data, error } = await supabase
+    .from("customers")
+    .update({ birthday_status: status })
+    .eq("customer_id", customerId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating birthday status:", error);
+    throw error;
+  }
+  return data;
+};
+
+export const updateCustomerGiftStatus = async (
+  customerId: string,
+  isGiftUsed: "Sim" | "Não"
+): Promise<Customer> => {
+  const { data, error } = await supabase
+    .from("customers")
+    .update({ Is_Gift_Used: isGiftUsed })
+    .eq("customer_id", customerId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error updating gift status:", error);
+    throw error;
+  }
+  return data;
+};
+
+export const addCustomer = async (customerData: {
+  name: string;
+  whatsapp: string;
+  email?: string;
+  birthday?: string;
+}) => {
+  const { data, error } = await supabase
+    .from("customers")
+    .insert([customerData])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error adding customer:", error);
+    throw error;
+  }
+  return data;
 };
