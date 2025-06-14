@@ -5,8 +5,8 @@ export interface MenuItem {
   description: string;
   price: number;
   category: string;
-  image: string;
   available: boolean;
+  image?: string | null;
 }
 
 // Tipo para os itens dentro do campo JSONB 'order_items'

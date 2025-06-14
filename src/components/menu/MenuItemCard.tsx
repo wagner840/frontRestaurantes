@@ -16,11 +16,6 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = ({
 }) => {
   return (
     <div className="bg-white rounded-lg border border-[#e5e8ea] overflow-hidden flex flex-col h-full">
-      <img
-        src={item.image}
-        alt={item.name}
-        className="w-full h-40 object-cover sm:h-48"
-      />
       <div className="p-4 flex flex-col flex-grow">
         <div className="flex items-start justify-between gap-2 mb-2">
           <h3 className="font-bold text-base sm:text-lg text-[#111416]">

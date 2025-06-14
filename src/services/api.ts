@@ -363,15 +363,77 @@ export const updateCustomerGiftStatus = async (
   return data;
 };
 
+export const formatPhoneNumberBR = (phone: string): string => {
+  if (!phone) return "";
+
+  const cleaned = phone.replace(/\D/g, "");
+
+  if (cleaned.length < 10) {
+    // Retorna o número limpo se for inválido, para possível tratamento futuro
+    return cleaned;
+  }
+
+  const ddd = cleaned.substring(0, 2);
+  let localNumber = cleaned.substring(2);
+
+  const dddsToRemoveNinthDigit = [
+    "11",
+    "12",
+    "13",
+    "14",
+    "15",
+    "16",
+    "17",
+    "18",
+    "19",
+    "21",
+    "22",
+    "24",
+    "27",
+    "28",
+    "41",
+    "42",
+    "43",
+    "44",
+    "45",
+    "46",
+    "47",
+    "48",
+    "49",
+    "51",
+    "52",
+    "53",
+    "54",
+    "55",
+  ];
+
+  if (
+    dddsToRemoveNinthDigit.includes(ddd) &&
+    localNumber.length === 9 &&
+    localNumber.startsWith("9")
+  ) {
+    localNumber = localNumber.substring(1);
+  }
+
+  return `+55${ddd}${localNumber}`;
+};
+
 export const addCustomer = async (customerData: {
   name: string;
   whatsapp: string;
   email?: string;
   birthday?: string;
 }) => {
+  const formattedPhone = formatPhoneNumberBR(customerData.whatsapp);
+
+  const customerToInsert = {
+    ...customerData,
+    whatsapp: formattedPhone,
+  };
+
   const { data, error } = await supabase
     .from("customers")
-    .insert([customerData])
+    .insert([customerToInsert])
     .select()
     .single();
 

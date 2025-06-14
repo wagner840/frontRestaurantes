@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { MenuItemCard } from "../../components/menu/MenuItemCard";
+import MenuItemFormModal from "../../components/menu/MenuItemFormModal";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Plus, Search } from "lucide-react";
 import { getMenuItems } from "../../services/api";
 import { MenuItem } from "../../types";
+import { supabase } from "../../lib/supabaseClient";
 
 export const Menu: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -13,6 +15,10 @@ export const Menu: React.FC = () => {
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Estados para o modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
 
   useEffect(() => {
     const fetchMenu = async () => {
@@ -38,6 +44,56 @@ export const Menu: React.FC = () => {
     fetchMenu();
   }, []);
 
+  // Funções para controlar o modal
+  const handleOpenModalForAdd = () => {
+    setEditingItem(null);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingItem(null);
+  };
+
+  const handleSubmit = async (
+    itemData: Omit<MenuItem, "id" | "image" | "available">
+  ) => {
+    try {
+      if (editingItem) {
+        // Edição
+        const { data, error } = await supabase
+          .from("menu_items")
+          .update({ ...itemData, available: editingItem.available })
+          .eq("id", editingItem.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        if (data) {
+          setItems(items.map((item) => (item.id === data.id ? data : item)));
+        }
+      } else {
+        // Criação
+        const { data, error } = await supabase
+          .from("menu_items")
+          .insert([{ ...itemData, image: null, available: true }])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        if (data) {
+          setItems([...items, data]);
+        }
+      }
+      handleCloseModal();
+    } catch (error) {
+      console.error("Erro ao salvar o item do cardápio:", error);
+      setError("Falha ao salvar o item. Tente novamente.");
+    }
+  };
+
   const filteredItems = items.filter((item) => {
     const matchesSearch =
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -49,8 +105,8 @@ export const Menu: React.FC = () => {
   });
 
   const handleEdit = (item: MenuItem) => {
-    // TODO: Implement edit functionality
-    console.log("Edit item:", item);
+    setEditingItem(item);
+    setIsModalOpen(true);
   };
 
   const handleDelete = (id: string) => {
@@ -67,7 +123,10 @@ export const Menu: React.FC = () => {
             Gerencie os itens do seu cardápio
           </p>
         </div>
-        <Button className="bg-[#0c7ff2] hover:bg-[#0c7ff2]/90 w-full sm:w-auto">
+        <Button
+          onClick={handleOpenModalForAdd}
+          className="bg-[#0c7ff2] hover:bg-[#0c7ff2]/90 w-full sm:w-auto"
+        >
           <Plus size={20} className="mr-2" />
           Adicionar Item
         </Button>
@@ -128,6 +187,13 @@ export const Menu: React.FC = () => {
           ))}
         </div>
       )}
+
+      <MenuItemFormModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onSubmit={handleSubmit}
+        item={editingItem}
+      />
     </div>
   );
 };
