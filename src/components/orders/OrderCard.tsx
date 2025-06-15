@@ -81,6 +81,17 @@ const getNextStatus = (
   return null;
 };
 
+// Função utilitária para extrair o nome do item de forma flexível
+const getItemName = (item: any): string => {
+  return (
+    item.item_name ||
+    item.name ||
+    item.item ||
+    item.product_name ||
+    "Item sem nome"
+  );
+};
+
 export const OrderCard: React.FC<OrderCardProps> = ({
   order,
   onUpdateStatus,
@@ -155,10 +166,15 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           >
             <div className="flex-grow">
               <span className="font-medium text-[#111416]">
-                {item.quantity}x {item.name}
+                {item.quantity}x {getItemName(item)}
               </span>
               {item.notes && (
                 <p className="text-sm text-[#607589] mt-1">Obs: {item.notes}</p>
+              )}
+              {item.details && (
+                <p className="text-sm text-[#607589] mt-1">
+                  Detalhes: {item.details}
+                </p>
               )}
             </div>
             <span className="text-right text-[#607589] flex-shrink-0">

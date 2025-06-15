@@ -10,12 +10,20 @@ export interface MenuItem {
 }
 
 // Tipo para os itens dentro do campo JSONB 'order_items'
+// Flexível para suportar diferentes estruturas do banco de dados
 export interface OrderItemJson {
-  menuItemId: string;
-  name: string;
+  menuItemId?: string;
+  // Campos de nome (um destes deve estar presente)
+  item_name?: string;
+  name?: string;
+  item?: string;
+  product_name?: string;
+  // Campos obrigatórios
   quantity: number;
   price: number;
+  // Campos opcionais
   notes?: string;
+  details?: string;
 }
 
 export interface Order {

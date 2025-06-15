@@ -2,6 +2,10 @@ import React, { useEffect, useState } from "react";
 import { StatsCard } from "../../components/dashboard/StatsCard";
 import { RecentOrders } from "../../components/dashboard/RecentOrders";
 import {
+  SalesByCategoryChart,
+  SalesByCategoryData,
+} from "../../components/dashboard/SalesByCategoryChart";
+import {
   ShoppingBag,
   DollarSign,
   Clock,
@@ -18,17 +22,14 @@ import {
 } from "../../services/api";
 import { Order, DashboardStats } from "../../types";
 
-interface SalesByCategory {
-  category: string;
-  amount: number;
-}
-
 export const Dashboard: React.FC<{ onTabChange: (tab: string) => void }> = ({
   onTabChange,
 }) => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [salesByCategory, setSalesByCategory] = useState<SalesByCategory[]>([]);
+  const [salesByCategory, setSalesByCategory] = useState<SalesByCategoryData[]>(
+    []
+  );
   const [activeCustomers, setActiveCustomers] = useState<number>(0);
   const [revenueGrowth, setRevenueGrowth] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,6 +40,8 @@ export const Dashboard: React.FC<{ onTabChange: (tab: string) => void }> = ({
       setIsLoading(true);
       setError(null);
       try {
+        console.log("Dashboard: Iniciando carregamento de dados...");
+
         const [statsData, ordersData, salesData, customersData, growthData] =
           await Promise.all([
             getDashboardStats(),
@@ -47,6 +50,13 @@ export const Dashboard: React.FC<{ onTabChange: (tab: string) => void }> = ({
             getActiveCustomers(),
             getRevenueGrowth(),
           ]);
+
+        console.log("Dashboard: Dados recebidos:");
+        console.log("- Stats:", statsData);
+        console.log("- Orders:", ordersData);
+        console.log("- Sales by Category:", salesData);
+        console.log("- Active Customers:", customersData);
+        console.log("- Revenue Growth:", growthData);
 
         setStats(statsData);
         setOrders(ordersData);
@@ -63,18 +73,6 @@ export const Dashboard: React.FC<{ onTabChange: (tab: string) => void }> = ({
 
     fetchData();
   }, []);
-
-  const totalSales = salesByCategory.reduce(
-    (sum, item) => sum + item.amount,
-    0
-  );
-  const categoryColors = [
-    "bg-blue-500",
-    "bg-green-500",
-    "bg-orange-500",
-    "bg-purple-500",
-    "bg-red-500",
-  ];
 
   if (isLoading) {
     return (
@@ -149,43 +147,10 @@ export const Dashboard: React.FC<{ onTabChange: (tab: string) => void }> = ({
 
           {/* Quick Stats and Sales by Category on the right */}
           <div className="space-y-6">
-            <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
-              <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4">
-                Vendas por Categoria
-              </h3>
-              <div className="space-y-4">
-                {salesByCategory.length > 0 ? (
-                  salesByCategory.map((item, index) => (
-                    <div key={item.category} className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium text-gray-700">
-                          {item.category}
-                        </span>
-                        <span className="font-semibold text-gray-900">
-                          R$ {item.amount.toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full ${
-                            categoryColors[index % categoryColors.length]
-                          }`}
-                          style={{
-                            width: `${
-                              (item.amount / (totalSales || 1)) * 100
-                            }%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-500 text-center py-4">
-                    Nenhum dado de vendas por categoria disponível.
-                  </p>
-                )}
-              </div>
-            </div>
+            <SalesByCategoryChart
+              data={salesByCategory}
+              isLoading={isLoading}
+            />
 
             <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
               <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4">

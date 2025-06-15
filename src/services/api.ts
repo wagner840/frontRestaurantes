@@ -1,13 +1,10 @@
 import { supabase } from "../lib/supabaseClient";
-import { Order, OrderItemJson, Customer, BirthdayStatus } from "../types";
+import { Order, Customer, BirthdayStatus, MenuItem } from "../types";
 
-const normalizeString = (str: string) => {
+// Função para normalizar strings, garantindo correspondência insensível a maiúsculas/minúsculas
+const normalizeString = (str: string | undefined | null): string => {
   if (typeof str !== "string") return "";
-  // Remove parenteses e seu conteúdo, depois trim e lowercase
-  return str
-    .replace(/\(.*\)/, "")
-    .trim()
-    .toLowerCase();
+  return str.trim().toLowerCase();
 };
 
 export const getOrders = async (): Promise<Order[]> => {
@@ -26,57 +23,16 @@ export const getOrders = async (): Promise<Order[]> => {
     console.error("Error fetching orders:", error);
     throw error;
   }
-  return data || [];
-};
 
-export const getDashboardStats = async () => {
-  const { data: orders, error: ordersError } = await supabase
-    .from("orders")
-    .select("status, total_amount");
-
-  if (ordersError) {
-    console.error("Error fetching stats:", ordersError);
-    throw ordersError;
-  }
-
-  if (!orders) {
-    return { totalOrders: 0, revenue: 0, activeOrders: 0, completedOrders: 0 };
-  }
-
-  const totalOrders = orders.length;
-  const revenue = orders.reduce(
-    (sum, order) => sum + (order.total_amount || 0),
-    0
+  return (
+    data?.map((order: any) => ({
+      ...order,
+      customerName: order.customer?.name || "Cliente Anônimo",
+    })) || []
   );
-  const activeOrders = orders.filter((o) =>
-    ["pending", "confirmed", "preparing", "out_for_delivery"].includes(o.status)
-  ).length;
-  const completedOrders = orders.filter((o) =>
-    ["completed", "delivered"].includes(o.status)
-  ).length;
-
-  return {
-    totalOrders,
-    revenue,
-    activeOrders,
-    completedOrders,
-  };
 };
 
-export const getMenuItems = async () => {
-  const { data, error } = await supabase
-    .from("menu_items")
-    .select("*")
-    .order("category, name");
-
-  if (error) {
-    console.error("Error fetching menu items:", error);
-    throw error;
-  }
-  return data;
-};
-
-export const getCustomers = async () => {
+export const getCustomers = async (): Promise<Customer[]> => {
   const { data, error } = await supabase
     .from("customers")
     .select("*")
@@ -86,6 +42,24 @@ export const getCustomers = async () => {
     console.error("Error fetching customers:", error);
     throw error;
   }
+
+  return data || [];
+};
+
+export const createOrder = async (
+  order: Omit<Order, "order_id" | "created_at">
+) => {
+  const { data, error } = await supabase
+    .from("orders")
+    .insert([order])
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error creating order:", error);
+    throw error;
+  }
+
   return data;
 };
 
@@ -101,71 +75,226 @@ export const updateOrderStatus = async (orderId: string, status: string) => {
     console.error("Error updating order status:", error);
     throw error;
   }
+
   return data;
 };
 
-export const getSalesByCategory = async () => {
-  const { data: orders, error: ordersError } = await supabase
+export const getMenuItems = async () => {
+  const { data, error } = await supabase.from("menu_items").select("*");
+
+  if (error) {
+    console.error("Error fetching menu items:", error);
+    throw error;
+  }
+
+  return data || [];
+};
+
+export const getDashboardStats = async () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString();
+
+  const { data: orders, error } = await supabase
     .from("orders")
-    .select("order_items")
-    .in("status", ["completed"]);
+    .select("*")
+    .gte("created_at", todayStr);
 
-  if (ordersError) {
-    throw ordersError;
+  if (error) {
+    console.error("Error fetching dashboard stats:", error);
+    throw error;
   }
-  if (!orders) return [];
 
-  const { data: menuItems, error: menuError } = await supabase
-    .from("menu_items")
-    .select("name, category");
+  if (!orders)
+    return { totalOrders: 0, revenue: 0, activeOrders: 0, completedOrders: 0 };
 
-  if (menuError) {
-    throw menuError;
-  }
-  if (!menuItems) return [];
+  const stats = {
+    totalOrders: orders.length,
+    revenue: orders.reduce((sum, order) => sum + (order.total_amount || 0), 0),
+    activeOrders: orders.filter((order) =>
+      ["pending", "confirmed", "preparing", "out_for_delivery"].includes(
+        order.status
+      )
+    ).length,
+    completedOrders: orders.filter((order) =>
+      ["delivered", "completed"].includes(order.status)
+    ).length,
+  };
 
-  const categoryMap = new Map<string, string>();
-  menuItems.forEach((item) => {
-    // A chave do mapa é o nome normalizado
-    categoryMap.set(normalizeString(item.name), item.category);
-  });
+  return stats;
+};
 
-  const sales = orders.reduce((acc, order) => {
-    let items: OrderItemJson[] = [];
-    if (typeof order.order_items === "string") {
-      try {
-        items = JSON.parse(order.order_items);
-      } catch (e) {
-        console.error("Failed to parse order_items from string:", e);
-      }
-    } else if (Array.isArray(order.order_items)) {
-      items = order.order_items;
+export const getSalesByCategory = async () => {
+  try {
+    console.log("getSalesByCategory: Iniciando busca de dados...");
+
+    // Buscar pedidos com status de completados ou entregues
+    const [ordersData, menuItemsData] = await Promise.all([
+      supabase
+        .from("orders")
+        .select("order_items, status")
+        .in("status", ["completed", "delivered"]),
+      supabase.from("menu_items").select("name, category"),
+    ]);
+
+    console.log("getSalesByCategory: Resposta orders:", ordersData);
+    console.log("getSalesByCategory: Resposta menu items:", menuItemsData);
+
+    if (ordersData.error) {
+      console.error("Erro ao buscar pedidos:", ordersData.error);
+      throw ordersData.error;
     }
 
-    items.forEach((item) => {
-      const itemName = (item as any).item_name;
-      if (!itemName) return;
+    if (menuItemsData.error) {
+      console.error("Erro ao buscar itens do menu:", menuItemsData.error);
+      throw menuItemsData.error;
+    }
 
-      const normalizedItemName = normalizeString(itemName);
-      const category = categoryMap.get(normalizedItemName);
+    const orders = ordersData.data || [];
+    const menuItems = menuItemsData.data || [];
 
-      if (category) {
-        const saleAmount = item.price * item.quantity;
-        acc[category] = (acc[category] || 0) + saleAmount;
-      } else {
-        const saleAmount = item.price * item.quantity;
-        acc["Outros"] = (acc["Outros"] || 0) + saleAmount;
+    console.log("getSalesByCategory: Total de pedidos:", orders.length);
+    console.log(
+      "getSalesByCategory: Total de itens do menu:",
+      menuItems.length
+    );
+
+    // Criar mapa de categorias
+    const categoryMap = new Map<string, string>();
+    menuItems.forEach((item) => {
+      if (item.name && item.category) {
+        categoryMap.set(normalizeString(item.name), item.category);
       }
     });
-    return acc;
-  }, {} as Record<string, number>);
 
-  return Object.entries(sales)
-    .map(([category, amount]) => ({
-      category,
-      amount,
-    }))
-    .sort((a, b) => b.amount - a.amount);
+    console.log(
+      "getSalesByCategory: Mapa de categorias criado com",
+      categoryMap.size,
+      "itens"
+    );
+
+    const sales: Record<string, number> = {};
+    let processedItems = 0;
+    const unmappedItems: string[] = [];
+
+    // Processar pedidos
+    orders.forEach((order) => {
+      let orderItems = order.order_items;
+
+      // Se order_items for uma string JSON, fazer o parse
+      if (typeof orderItems === "string") {
+        try {
+          orderItems = JSON.parse(orderItems);
+        } catch (e) {
+          console.warn("Erro ao fazer parse de order_items:", e, order);
+          return;
+        }
+      }
+
+      if (!orderItems || !Array.isArray(orderItems)) {
+        console.warn("Pedido sem itens ou formato inválido:", order);
+        return;
+      }
+
+      orderItems.forEach((item: any) => {
+        // Tenta diferentes variações de nomes de campos
+        const itemName =
+          item.item_name || item.name || item.item || item.product_name;
+
+        if (!itemName) {
+          console.warn("Item sem nome encontrado:", item);
+          return;
+        }
+
+        const quantity = item.quantity || 0;
+        const price = item.price || 0;
+        const saleAmount = quantity * price;
+
+        if (saleAmount <= 0) {
+          console.warn("Item com valor inválido:", {
+            itemName,
+            quantity,
+            price,
+          });
+          return;
+        }
+
+        const normalizedItemName = normalizeString(itemName);
+        let category = categoryMap.get(normalizedItemName);
+
+        // Se não encontrar categoria, tenta categorizar por palavras-chave
+        if (!category) {
+          unmappedItems.push(itemName);
+
+          const lowerName = itemName.toLowerCase();
+          if (
+            lowerName.includes("burger") ||
+            lowerName.includes("smash") ||
+            lowerName.includes("red")
+          ) {
+            category = "Lanches";
+          } else if (
+            lowerName.includes("batata") ||
+            lowerName.includes("frita") ||
+            lowerName.includes("porção")
+          ) {
+            category = "Acompanhamentos";
+          } else if (
+            lowerName.includes("coca") ||
+            lowerName.includes("refrigerante") ||
+            lowerName.includes("suco") ||
+            lowerName.includes("água")
+          ) {
+            category = "Bebidas";
+          } else if (
+            lowerName.includes("sobremesa") ||
+            lowerName.includes("doce")
+          ) {
+            category = "Sobremesas";
+          } else {
+            category = "Outros";
+          }
+        }
+
+        sales[category] = (sales[category] || 0) + saleAmount;
+        processedItems++;
+      });
+    });
+
+    console.log("getSalesByCategory: Itens processados:", processedItems);
+    if (unmappedItems.length > 0) {
+      console.log("getSalesByCategory: Itens não mapeados:", unmappedItems);
+    }
+    console.log("getSalesByCategory: Vendas por categoria:", sales);
+
+    // Se não houver dados, retorna categorias padrão com valor zero
+    if (Object.keys(sales).length === 0) {
+      console.log(
+        "getSalesByCategory: Nenhuma venda encontrada, retornando categorias padrão"
+      );
+      return [
+        { category: "Lanches", amount: 0 },
+        { category: "Bebidas", amount: 0 },
+        { category: "Acompanhamentos", amount: 0 },
+        { category: "Sobremesas", amount: 0 },
+      ];
+    }
+
+    const result = Object.entries(sales)
+      .map(([category, amount]) => ({
+        category,
+        amount,
+      }))
+      .sort((a, b) => b.amount - a.amount);
+
+    console.log("getSalesByCategory: Resultado final:", result);
+
+    return result;
+  } catch (error) {
+    console.error("Error calculating sales by category:", error);
+    // Retorna array vazio em caso de erro
+    return [];
+  }
 };
 
 export const getActiveCustomers = async (days = 30) => {
@@ -194,143 +323,66 @@ export const getRevenueGrowth = async () => {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  const last7DaysStart = new Date(today);
-  last7DaysStart.setDate(today.getDate() - 6);
+  const lastWeek = new Date(today);
+  lastWeek.setDate(lastWeek.getDate() - 7);
 
-  const previous7DaysStart = new Date(last7DaysStart);
-  previous7DaysStart.setDate(last7DaysStart.getDate() - 7);
-  const previous7DaysEnd = new Date(last7DaysStart);
-  previous7DaysEnd.setDate(last7DaysStart.getDate() - 1);
+  const twoWeeksAgo = new Date(today);
+  twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
 
-  const fetchRevenue = async (startDate: Date, endDate: Date) => {
-    const { data, error } = await supabase
+  const [currentWeekData, previousWeekData] = await Promise.all([
+    supabase
       .from("orders")
       .select("total_amount")
-      .in("status", ["completed", "delivered"])
-      .gte("created_at", startDate.toISOString())
-      .lte("created_at", endDate.toISOString());
+      .gte("created_at", lastWeek.toISOString())
+      .lt("created_at", today.toISOString()),
+    supabase
+      .from("orders")
+      .select("total_amount")
+      .gte("created_at", twoWeeksAgo.toISOString())
+      .lt("created_at", lastWeek.toISOString()),
+  ]);
 
-    if (error) throw error;
-    return (
-      data?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0
-    );
-  };
+  if (currentWeekData.error) throw currentWeekData.error;
+  if (previousWeekData.error) throw previousWeekData.error;
 
-  try {
-    const currentWeekRevenue = await fetchRevenue(last7DaysStart, now);
-    const previousWeekRevenue = await fetchRevenue(
-      previous7DaysStart,
-      previous7DaysEnd
-    );
+  const currentRevenue =
+    currentWeekData.data?.reduce(
+      (sum, order) => sum + (order.total_amount || 0),
+      0
+    ) || 0;
+  const previousRevenue =
+    previousWeekData.data?.reduce(
+      (sum, order) => sum + (order.total_amount || 0),
+      0
+    ) || 0;
 
-    if (previousWeekRevenue === 0) {
-      return currentWeekRevenue > 0 ? 100 : 0;
-    }
+  if (previousRevenue === 0) return 0;
 
-    const growth =
-      ((currentWeekRevenue - previousWeekRevenue) / previousWeekRevenue) * 100;
-    return growth;
-  } catch (error) {
-    console.error("Error fetching revenue growth:", error);
-    throw error;
-  }
+  const growth = ((currentRevenue - previousRevenue) / previousRevenue) * 100;
+  return growth;
 };
 
-export const getCustomerDetails = async (customerId: string) => {
-  const { data: orders, error } = await supabase
-    .from("orders")
-    .select("created_at, total_amount")
-    .eq("customer_id", customerId);
-
-  if (error) {
-    console.error("Error fetching customer orders:", error);
-    throw error;
-  }
-
-  if (!orders) {
-    return {
-      totalOrders: 0,
-      totalSpent: 0,
-      favoriteDays: [],
-    };
-  }
-
-  const totalSpent = orders.reduce(
-    (sum, order) => sum + (order.total_amount || 0),
-    0
-  );
-
-  const dayFrequency = orders.reduce((acc, order) => {
-    const day = new Date(order.created_at).toLocaleDateString("pt-BR", {
-      weekday: "long",
-    });
-    acc[day] = (acc[day] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-  const favoriteDays = Object.entries(dayFrequency)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3) // Pega os 3 dias mais frequentes
-    .map((entry) => entry[0]);
-
-  return {
-    totalOrders: orders.length,
-    totalSpent,
-    favoriteDays,
-  };
-};
-
-export const getBirthdayCustomers = async (days = 30): Promise<Customer[]> => {
-  const today = new Date();
-  const futureDate = new Date();
-  futureDate.setDate(today.getDate() + days);
-
-  // Esta é uma simplificação. O ideal seria uma query mais complexa
-  // ou uma função no banco de dados (RPC) para lidar com aniversários
-  // que "viram o ano" (ex: hoje é 20/12, buscar aniversários até 19/01).
+export const createCustomer = async (
+  customer: Omit<Customer, "customer_id" | "created_at">
+) => {
   const { data, error } = await supabase
     .from("customers")
-    .select("*")
-    .not("birthday", "is", null)
-    .in("birthday_status", ["eligible", "30d_sent", "15d_sent", "booked"]);
+    .insert([customer])
+    .select()
+    .single();
 
   if (error) {
-    console.error("Error fetching birthday customers:", error);
+    console.error("Error creating customer:", error);
     throw error;
   }
-  if (!data) return [];
 
-  // Filtro no lado do cliente para aniversários futuros
-  const upcomingBirthdays = data.filter((customer) => {
-    if (!customer.birthday) return false;
-    const birthday = new Date(customer.birthday);
-    const birthdayThisYear = new Date(
-      today.getFullYear(),
-      birthday.getMonth(),
-      birthday.getDate()
-    );
-
-    if (birthdayThisYear < today) {
-      birthdayThisYear.setFullYear(today.getFullYear() + 1);
-    }
-
-    return birthdayThisYear >= today && birthdayThisYear <= futureDate;
-  });
-
-  return upcomingBirthdays.sort((a, b) => {
-    const dateA = new Date(a.birthday!);
-    const dateB = new Date(b.birthday!);
-    const monthA = dateA.getMonth();
-    const monthB = dateB.getMonth();
-    if (monthA !== monthB) return monthA - monthB;
-    return dateA.getDate() - dateB.getDate();
-  });
+  return data;
 };
 
-export const updateBirthdayStatus = async (
+export const updateCustomerBirthdayStatus = async (
   customerId: string,
   status: BirthdayStatus
-): Promise<Customer> => {
+) => {
   const { data, error } = await supabase
     .from("customers")
     .update({ birthday_status: status })
@@ -339,107 +391,152 @@ export const updateBirthdayStatus = async (
     .single();
 
   if (error) {
-    console.error("Error updating birthday status:", error);
+    console.error("Error updating customer birthday status:", error);
     throw error;
   }
+
   return data;
 };
 
-export const updateCustomerGiftStatus = async (
-  customerId: string,
-  isGiftUsed: "Sim" | "Não"
-): Promise<Customer> => {
+export const getCustomerByWhatsapp = async (
+  whatsapp: string
+): Promise<Customer | null> => {
   const { data, error } = await supabase
     .from("customers")
-    .update({ Is_Gift_Used: isGiftUsed })
+    .select("*")
+    .eq("whatsapp", whatsapp)
+    .single();
+
+  if (error && error.code !== "PGRST116") {
+    console.error("Error fetching customer by WhatsApp:", error);
+    throw error;
+  }
+
+  return data || null;
+};
+
+export const getOrdersByCustomer = async (
+  customerId: string
+): Promise<Order[]> => {
+  const { data, error } = await supabase
+    .from("orders")
+    .select(
+      `
+      *,
+      customer:customers ( name ),
+      address:addresses ( street, number, city )
+    `
+    )
     .eq("customer_id", customerId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching orders by customer:", error);
+    throw error;
+  }
+
+  return data || [];
+};
+
+// Função para adicionar um novo item ao menu
+export const addMenuItem = async (
+  menuItem: Omit<MenuItem, "id" | "created_at">
+) => {
+  const { data, error } = await supabase
+    .from("menu_items")
+    .insert([menuItem])
     .select()
     .single();
 
   if (error) {
-    console.error("Error updating gift status:", error);
+    console.error("Error adding menu item:", error);
     throw error;
   }
+
   return data;
 };
 
-export const formatPhoneNumberBR = (phone: string): string => {
-  if (!phone) return "";
+// Função para atualizar um item do menu
+export const updateMenuItem = async (
+  id: string,
+  updates: Partial<MenuItem>
+) => {
+  const { data, error } = await supabase
+    .from("menu_items")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single();
 
-  const cleaned = phone.replace(/\D/g, "");
-
-  if (cleaned.length < 10) {
-    // Retorna o número limpo se for inválido, para possível tratamento futuro
-    return cleaned;
+  if (error) {
+    console.error("Error updating menu item:", error);
+    throw error;
   }
 
-  const ddd = cleaned.substring(0, 2);
-  let localNumber = cleaned.substring(2);
-
-  const dddsToRemoveNinthDigit = [
-    "11",
-    "12",
-    "13",
-    "14",
-    "15",
-    "16",
-    "17",
-    "18",
-    "19",
-    "21",
-    "22",
-    "24",
-    "27",
-    "28",
-    "41",
-    "42",
-    "43",
-    "44",
-    "45",
-    "46",
-    "47",
-    "48",
-    "49",
-    "51",
-    "52",
-    "53",
-    "54",
-    "55",
-  ];
-
-  if (
-    dddsToRemoveNinthDigit.includes(ddd) &&
-    localNumber.length === 9 &&
-    localNumber.startsWith("9")
-  ) {
-    localNumber = localNumber.substring(1);
-  }
-
-  return `+55${ddd}${localNumber}`;
+  return data;
 };
 
-export const addCustomer = async (customerData: {
-  name: string;
-  whatsapp: string;
-  email?: string;
-  birthday?: string;
-}) => {
-  const formattedPhone = formatPhoneNumberBR(customerData.whatsapp);
+// Função para deletar um item do menu
+export const deleteMenuItem = async (id: string) => {
+  const { error } = await supabase.from("menu_items").delete().eq("id", id);
 
-  const customerToInsert = {
-    ...customerData,
-    whatsapp: formattedPhone,
-  };
+  if (error) {
+    console.error("Error deleting menu item:", error);
+    throw error;
+  }
+};
 
+// Alias para compatibilidade
+export const addCustomer = createCustomer;
+
+// Função para atualizar status de presente do cliente (alias para compatibilidade)
+export const updateCustomerGiftStatus = updateCustomerBirthdayStatus;
+
+// Função para atualizar status de aniversário (alias)
+export const updateBirthdayStatus = updateCustomerBirthdayStatus;
+
+// Função para obter clientes com aniversário
+export const getBirthdayCustomers = async () => {
   const { data, error } = await supabase
     .from("customers")
-    .insert([customerToInsert])
-    .select()
-    .single();
+    .select("*")
+    .not("birthday", "is", null)
+    .order("birthday", { ascending: true });
 
   if (error) {
-    console.error("Error adding customer:", error);
+    console.error("Error fetching birthday customers:", error);
     throw error;
   }
-  return data;
+
+  return data || [];
+};
+
+// Função para obter detalhes do cliente
+export const getCustomerDetails = async (customerId: string) => {
+  const orders = await getOrdersByCustomer(customerId);
+
+  const totalOrders = orders.length;
+  const totalSpent = orders.reduce(
+    (sum, order) => sum + (order.total_amount || 0),
+    0
+  );
+
+  // Análise de dias favoritos
+  const dayCount: Record<string, number> = {};
+  orders.forEach((order) => {
+    const date = new Date(order.created_at);
+    const dayName = date.toLocaleDateString("pt-BR", { weekday: "long" });
+    dayCount[dayName] = (dayCount[dayName] || 0) + 1;
+  });
+
+  const favoriteDays = Object.entries(dayCount)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 3)
+    .map(([day]) => day);
+
+  return {
+    totalOrders,
+    totalSpent,
+    favoriteDays,
+  };
 };
