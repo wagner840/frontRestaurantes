@@ -27,7 +27,17 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
     setIsLoading(true);
     setError(null);
     try {
-      await addCustomer({ name, whatsapp, email, birthday });
+      await addCustomer({
+        name,
+        whatsapp,
+        email,
+        birthday,
+        unique_code: "", // Valor padrão
+        birthday_status: null, // Valor padrão
+        last_contacted_at: null, // Valor padrão
+        Is_Gift_Used: null, // Valor padrão
+        whatsapp_chat_id: null, // Valor padrão
+      });
       onCustomerAdded();
       onClose();
     } catch (err) {

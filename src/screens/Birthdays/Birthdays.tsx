@@ -12,7 +12,7 @@ export const BirthdaysScreen: React.FC = () => {
     const fetchCustomers = async () => {
       try {
         setIsLoading(true);
-        const data = await getBirthdayCustomers(30);
+        const data = await getBirthdayCustomers();
         setCustomers(data);
       } catch (err) {
         setError("Falha ao buscar aniversariantes.");

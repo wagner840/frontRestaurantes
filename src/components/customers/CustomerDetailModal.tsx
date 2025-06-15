@@ -53,12 +53,13 @@ export const CustomerDetailModal: React.FC<Props> = ({
 
     setIsUpdatingGiftStatus(true);
     try {
-      const newStatus = giftStatus === "Sim" ? "Não" : "Sim";
+      // Lógica ajustada para usar birthday_status conforme o tipo
+      const newStatus = giftStatus === "Sim" ? "eligible" : "completed";
       const updatedCustomer = await updateCustomerGiftStatus(
         customer.customer_id,
         newStatus
       );
-      setGiftStatus(newStatus);
+      setGiftStatus(giftStatus === "Sim" ? "Não" : "Sim"); // Mantém a UI consistente
       onCustomerUpdate(updatedCustomer);
     } catch (error) {
       console.error("Failed to update gift status:", error);
